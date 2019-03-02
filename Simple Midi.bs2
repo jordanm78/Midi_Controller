@@ -1,0 +1,99 @@
+'  This is a program to experiment with MIDI
+'Much of the information here was found in a tutorial at
+'http://www.music-software-development.com/midi-tutorial.html
+
+
+
+' {$STAMP BS2}
+' {$PBASIC 2.5}
+
+'  ***  Define Constants  ***
+
+'Serial output pin
+SO          PIN     1
+
+'Baud Rate Constants
+T1200       CON     813
+T2400       CON     396
+T9600       CON     84
+T19K2       CON     32
+T38K4       CON     6
+
+'Serial Constants
+Inverted    CON     $4000    ' The dollar sign ($) indicates a hexidecimal number
+Open        CON     $8000
+
+'Baud
+Baud        CON     T38K4 + Inverted
+
+
+'Declare Variables
+'Bit(1) Nib(4) Byte(8) Word(16)
+Channel             VAR     Byte   '0 - 15
+Pitch               VAR     Byte  '0 - 127
+Velocity            VAR     Byte  '0 - 127
+Controller_Number   VAR     Byte  '0 - 119
+Controller_Value    VAR     Byte  '0 - 127
+Instrument_Number   VAR     Byte  '0 - 127
+
+Main:
+  'Set the volume on channel 1 to 64
+  Channel = 0 'Sending channel 0 corresponds to channel 1
+  Controller_Number = 7 'Controller Number 7 is volume
+  Controller_Value = 64
+  GOSUB Control_Change
+
+
+  'Choose a sound on channel 1
+  Channel = 0
+  Instrument_Number = 10
+  GOSUB Program_Change
+
+
+  'Play a note
+  Channel = 0
+  Pitch = 67
+  Velocity = 64
+  GOSUB Note_On
+  PAUSE 1000  'One second pause to hear the note
+  GOSUB Note_Off
+
+END
+
+
+
+Note_On:
+  'This turns on a note.
+  'The channel (0 - 15) indicates which midi device (1 - 16) you want to communicate with.
+  'The pitch is the pitch of the note
+  'The velocity is the velocity at which the note was struck.  Higher velocity indicates a louder note.
+
+  'The percent sign (%) indicates a binary number
+  SEROUT SO, Baud, [%10010000 + channel, pitch, velocity]
+RETURN
+
+
+Note_Off:
+  'This turns off a note
+  'Velocity is rarely used when turning off a note.  By default it is set to 0.
+  SEROUT SO, Baud, [%10000000 + channel, pitch, velocity]
+RETURN
+
+Control_Change:
+  'The most common controller numbers are the following:
+  '0 = Sound bank selection (MSB)
+  '1 = Modulation wheel, often assigned TO a vibrato OR tremolo effect.
+  '7 = Volume level of the instrument
+  '10 = Panoramic (0 = left; 64 = center; 127 = right)
+  '11 = Expression (sometimes used also FOR volume control OR similar, depending ON the synthesizer)
+  '32 = Sound bank selection (LSB)
+  '64 = Sustain pedal (0 = no pedal; >= 64 => pedal ON)
+  '121 = All controllers off (this message clears all the controller values FOR this channel, back TO their default values)
+  '123 = All notes off (this message stops all the notes that are currently playing)
+  SEROUT SO, Baud, [%10110000 + channel, Controller_Number, Controller_Value]
+RETURN
+
+Program_Change:
+  'This selects an instrument from a sound bank.
+  SEROUT SO, Baud, [%11000000 + channel, Instrument_Number]
+RETURN
